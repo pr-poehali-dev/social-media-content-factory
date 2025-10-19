@@ -15,15 +15,23 @@ interface GeneratedPost {
   topic: string;
   text: string;
   timestamp: number;
+  scheduledDate?: string;
+}
+
+interface ScheduledPost extends GeneratedPost {
+  scheduledDate: string;
 }
 
 const Index = () => {
   const [topic, setTopic] = useState('');
-  const [platform, setPlatform] = useState<'vk' | 'telegram' | 'instagram'>('vk');
+  const [platform, setPlatform] = useState<'telegram' | 'instagram' | 'threads' | 'youtube'>('telegram');
   const [tone, setTone] = useState<'professional' | 'friendly' | 'motivational'>('friendly');
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedPosts, setGeneratedPosts] = useState<GeneratedPost[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [scheduledPosts, setScheduledPosts] = useState<ScheduledPost[]>([]);
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [currentView, setCurrentView] = useState<'generator' | 'calendar'>('generator');
   const { toast } = useToast();
 
   const generatePost = async () => {
@@ -111,34 +119,92 @@ const Index = () => {
     });
   };
 
+  const schedulePost = (post: GeneratedPost, date: string) => {
+    const scheduled: ScheduledPost = {
+      ...post,
+      scheduledDate: date,
+    };
+    setScheduledPosts([...scheduledPosts, scheduled]);
+    toast({
+      title: 'Запланировано!',
+      description: `Пост запланирован на ${new Date(date).toLocaleDateString('ru-RU')}`,
+    });
+  };
+
+  const removeScheduledPost = (id: string) => {
+    setScheduledPosts(scheduledPosts.filter(p => p.id !== id));
+    toast({
+      title: 'Удалено',
+      description: 'Пост удалён из календаря',
+    });
+  };
+
   const getPlatformIcon = (platformName: string) => {
     const icons = {
-      vk: 'Share2',
       telegram: 'Send',
       instagram: 'Camera',
+      threads: 'AtSign',
+      youtube: 'Video',
     };
     return icons[platformName as keyof typeof icons] || 'FileText';
   };
 
   const getPlatformColor = (platformName: string) => {
     const colors = {
-      vk: 'bg-blue-500',
       telegram: 'bg-sky-500',
       instagram: 'bg-pink-500',
+      threads: 'bg-purple-500',
+      youtube: 'bg-red-500',
     };
     return colors[platformName as keyof typeof colors] || 'bg-gray-500';
+  };
+
+  const getMonthDays = (year: number, month: number) => {
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const daysInMonth = lastDay.getDate();
+    const startingDayOfWeek = firstDay.getDay();
+    
+    return { daysInMonth, startingDayOfWeek };
+  };
+
+  const getPostsForDate = (date: Date) => {
+    const dateStr = date.toISOString().split('T')[0];
+    return scheduledPosts.filter(p => p.scheduledDate === dateStr);
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
       <div className="container mx-auto px-4 py-8 max-w-7xl">
-        <header className="text-center mb-12 animate-fade-in">
-          <h1 className="text-5xl font-bold mb-3 bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent" style={{ fontFamily: 'Montserrat, sans-serif' }}>
-            Контент-Фабрика
-          </h1>
-          <p className="text-gray-600 text-lg">Генерация постов для социальных сетей с помощью ИИ</p>
+        <header className="mb-8 animate-fade-in">
+          <div className="text-center mb-6">
+            <h1 className="text-5xl font-bold mb-3 bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+              Контент-Фабрика
+            </h1>
+            <p className="text-gray-600 text-lg">Генерация постов для социальных сетей с помощью ИИ</p>
+          </div>
+
+          <div className="flex justify-center gap-4">
+            <Button
+              variant={currentView === 'generator' ? 'default' : 'outline'}
+              onClick={() => setCurrentView('generator')}
+              className={currentView === 'generator' ? 'bg-gradient-to-r from-purple-600 to-pink-600' : ''}
+            >
+              <Icon name="Sparkles" size={18} className="mr-2" />
+              Генератор
+            </Button>
+            <Button
+              variant={currentView === 'calendar' ? 'default' : 'outline'}
+              onClick={() => setCurrentView('calendar')}
+              className={currentView === 'calendar' ? 'bg-gradient-to-r from-purple-600 to-pink-600' : ''}
+            >
+              <Icon name="Calendar" size={18} className="mr-2" />
+              Календарь ({scheduledPosts.length})
+            </Button>
+          </div>
         </header>
 
+        {currentView === 'generator' && (
         <div className="grid lg:grid-cols-2 gap-8">
           <div className="space-y-6">
             <Card className="p-6 shadow-lg animate-scale-in">
@@ -165,12 +231,6 @@ const Index = () => {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="vk">
-                        <div className="flex items-center gap-2">
-                          <Icon name="Share2" size={16} />
-                          ВКонтакте
-                        </div>
-                      </SelectItem>
                       <SelectItem value="telegram">
                         <div className="flex items-center gap-2">
                           <Icon name="Send" size={16} />
@@ -181,6 +241,18 @@ const Index = () => {
                         <div className="flex items-center gap-2">
                           <Icon name="Camera" size={16} />
                           Instagram
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="threads">
+                        <div className="flex items-center gap-2">
+                          <Icon name="AtSign" size={16} />
+                          Threads
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="youtube">
+                        <div className="flex items-center gap-2">
+                          <Icon name="Video" size={16} />
+                          YouTube
                         </div>
                       </SelectItem>
                     </SelectContent>
@@ -325,6 +397,18 @@ const Index = () => {
                           <Button
                             size="sm"
                             variant="ghost"
+                            onClick={() => {
+                              const dateInput = prompt('Введите дату публикации (ГГГГ-ММ-ДД):');
+                              if (dateInput) {
+                                schedulePost(post, dateInput);
+                              }
+                            }}
+                          >
+                            <Icon name="Calendar" size={16} />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
                             onClick={() => deletePost(post.id)}
                           >
                             <Icon name="Trash2" size={16} />
@@ -352,6 +436,144 @@ const Index = () => {
             </Card>
           </div>
         </div>
+        )}
+
+        {currentView === 'calendar' && (
+          <div className="space-y-6">
+            <Card className="p-6 shadow-lg">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-semibold flex items-center gap-2" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+                  <Icon name="CalendarDays" size={24} className="text-purple-600" />
+                  Календарь публикаций
+                </h2>
+                <Badge variant="secondary">
+                  {scheduledPosts.length} запланировано
+                </Badge>
+              </div>
+
+              <div className="grid md:grid-cols-3 gap-6">
+                {[0, 1, 2].map((monthOffset) => {
+                  const currentDate = new Date();
+                  const targetMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + monthOffset, 1);
+                  const year = targetMonth.getFullYear();
+                  const month = targetMonth.getMonth();
+                  const { daysInMonth, startingDayOfWeek } = getMonthDays(year, month);
+                  
+                  const monthNames = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
+                  const dayNames = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
+
+                  return (
+                    <Card key={monthOffset} className="p-4">
+                      <h3 className="text-lg font-semibold mb-4 text-center">
+                        {monthNames[month]} {year}
+                      </h3>
+                      
+                      <div className="grid grid-cols-7 gap-1 mb-2">
+                        {dayNames.map(day => (
+                          <div key={day} className="text-center text-xs font-semibold text-gray-500 p-1">
+                            {day}
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="grid grid-cols-7 gap-1">
+                        {Array.from({ length: startingDayOfWeek === 0 ? 6 : startingDayOfWeek - 1 }).map((_, i) => (
+                          <div key={`empty-${i}`} className="aspect-square" />
+                        ))}
+                        
+                        {Array.from({ length: daysInMonth }).map((_, dayIndex) => {
+                          const day = dayIndex + 1;
+                          const date = new Date(year, month, day);
+                          const postsForDay = getPostsForDate(date);
+                          const isToday = date.toDateString() === new Date().toDateString();
+                          
+                          return (
+                            <div
+                              key={day}
+                              className={`aspect-square border rounded-lg p-1 flex flex-col items-center justify-center text-sm cursor-pointer transition-all hover:shadow-md ${
+                                isToday ? 'bg-purple-100 border-purple-600 font-bold' : 'hover:bg-gray-50'
+                              } ${postsForDay.length > 0 ? 'bg-purple-50' : ''}`}
+                              onClick={() => {
+                                if (generatedPosts.length > 0) {
+                                  const dateStr = date.toISOString().split('T')[0];
+                                  const selectedPost = generatedPosts[0];
+                                  schedulePost(selectedPost, dateStr);
+                                }
+                              }}
+                            >
+                              <span className={isToday ? 'text-purple-600' : ''}>{day}</span>
+                              {postsForDay.length > 0 && (
+                                <div className="flex gap-0.5 mt-0.5 flex-wrap justify-center">
+                                  {postsForDay.slice(0, 3).map((post, i) => (
+                                    <div
+                                      key={i}
+                                      className={`w-1.5 h-1.5 rounded-full ${getPlatformColor(post.platform)}`}
+                                      title={post.platform}
+                                    />
+                                  ))}
+                                  {postsForDay.length > 3 && (
+                                    <span className="text-[8px] text-gray-500">+{postsForDay.length - 3}</span>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </Card>
+                  );
+                })}
+              </div>
+            </Card>
+
+            <Card className="p-6 shadow-lg">
+              <h3 className="text-xl font-semibold mb-4 flex items-center gap-2" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+                <Icon name="List" size={20} className="text-purple-600" />
+                Запланированные посты
+              </h3>
+
+              {scheduledPosts.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                  <Icon name="CalendarX" size={48} className="mx-auto mb-3 text-gray-300" />
+                  <p>Нет запланированных постов</p>
+                  <p className="text-sm text-gray-400 mt-1">Создайте пост и добавьте его в календарь</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {scheduledPosts
+                    .sort((a, b) => new Date(a.scheduledDate).getTime() - new Date(b.scheduledDate).getTime())
+                    .map((post) => (
+                      <Card key={post.id} className="p-4 border-l-4 hover:shadow-md transition-shadow" style={{ borderLeftColor: getPlatformColor(post.platform).replace('bg-', '#') }}>
+                        <div className="flex items-start justify-between">
+                          <div className="flex items-start gap-3 flex-1">
+                            <div className={`w-10 h-10 rounded-lg ${getPlatformColor(post.platform)} flex items-center justify-center text-white flex-shrink-0`}>
+                              <Icon name={getPlatformIcon(post.platform)} size={18} />
+                            </div>
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-1">
+                                <p className="font-semibold capitalize">{post.platform}</p>
+                                <Badge variant="outline" className="text-xs">
+                                  {new Date(post.scheduledDate).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })}
+                                </Badge>
+                              </div>
+                              <p className="text-sm text-gray-700 line-clamp-2">{post.text}</p>
+                            </div>
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => removeScheduledPost(post.id)}
+                          >
+                            <Icon name="X" size={16} />
+                          </Button>
+                        </div>
+                      </Card>
+                    ))}
+                </div>
+              )}
+            </Card>
+          </div>
+        )}
       </div>
     </div>
   );
