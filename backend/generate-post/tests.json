@@ -1,0 +1,40 @@
+{
+  "tests": [
+    {
+      "name": "Generate VK post with template fallback",
+      "method": "POST",
+      "path": "/",
+      "body": {
+        "topic": "Продуктивность",
+        "platform": "vk",
+        "tone": "friendly"
+      },
+      "expectedStatus": 200,
+      "expectedBody": {
+        "text": "string",
+        "source": "string"
+      },
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Reject request without topic",
+      "method": "POST",
+      "path": "/",
+      "body": {
+        "platform": "telegram",
+        "tone": "professional"
+      },
+      "expectedStatus": 400,
+      "expectedBody": {
+        "error": "Topic is required"
+      },
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Handle OPTIONS for CORS",
+      "method": "OPTIONS",
+      "path": "/",
+      "expectedStatus": 200
+    }
+  ]
+}
